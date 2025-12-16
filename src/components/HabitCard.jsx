@@ -1,17 +1,15 @@
+
 import React, { useEffect, useState } from "react";
-import { formatDate, isCompletedToday } from "../utils/dateHelpers";
 import { Plus, MoreVertical, Flame } from "lucide-react";
 
+import { formatDate, isCompletedToday } from "../utils/dateHelpers";
+import { formatFrequency, isScheduledToday, isSkippedToday, getNextScheduledDate } from '../utils/dateHelpers';
 
+// ---------------------- HABIT CARD ----------------------
 export default function HabitCard({ habit, onToggle, onDelete }) {
   const completed = isCompletedToday(habit.lastCompletedDate);
   const [showMenu, setShowMenu] = useState(false);
 
-  const stats = {
-    total: habits.length,
-    completed: habits.filter(h => isCompletedToday(h.lastCompletedDate)).length,
-    maxStreak: habits.length > 0 ? Math.max(...habits.map(h => h.streakCount || 0)) : 0,
-  };
   const categoryColors = {
     General: { bg: "from-slate-400 to-slate-600", glow: "from-slate-400/20 to-slate-600/20" },
     Health: { bg: "from-emerald-400 to-teal-600", glow: "from-emerald-400/20 to-teal-600/20" },
@@ -20,6 +18,10 @@ export default function HabitCard({ habit, onToggle, onDelete }) {
   };
 
   const colors = categoryColors[habit.category] || categoryColors.General;
+
+  const scheduledToday = isScheduledToday(habit);
+  const skippedToday = isSkippedToday(habit);
+
 
   return (
     <div className="group relative animate-fadeIn">
@@ -68,6 +70,32 @@ export default function HabitCard({ habit, onToggle, onDelete }) {
             )}
           </div>
         </div>
+        
+        <div className="flex items-center gap-2 mb-2">
+          <span className={`px-3 py-1 text-xs font-bold text-white rounded-full bg-gradient-to-r ${colors.bg} shadow-md`}>
+            {habit.category}
+          </span>
+          
+          {/* NEW: Schedule Badge */}
+          {habit.frequency !== 'daily' && (
+            <span className="px-3 py-1 text-xs font-bold bg-slate-200 text-slate-700 rounded-full">
+              📅 {formatFrequency(habit)}
+            </span>
+          )}
+          
+          {!scheduledToday && (
+            <span className="px-3 py-1 text-xs font-bold bg-amber-100 text-amber-700 rounded-full">
+              ⏸️ Not today
+            </span>
+          )}
+          
+          {skippedToday && (
+            <span className="px-3 py-1 text-xs font-bold bg-blue-100 text-blue-700 rounded-full">
+              ⏭️ Skipped
+            </span>
+          )}
+        </div>
+
 
         {/* Stats */}
         <div className="grid grid-cols-2 gap-3 mb-5">
@@ -109,25 +137,36 @@ export default function HabitCard({ habit, onToggle, onDelete }) {
         {/* Action Button */}
         <button
           onClick={() => onToggle(habit)}
-          className={`w-full py-4 rounded-2xl font-bold shadow-lg transition-all duration-300 relative overflow-hidden hover:scale-[1.02] active:scale-[0.98] ${
-            completed
+          disabled={!scheduledToday && !skippedToday}
+          className={`w-full py-4 rounded-2xl font-bold shadow-lg transition-all duration-300 relative overflow-hidden ${
+            !scheduledToday && !skippedToday
+              ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-50'
+              : completed
               ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-emerald-200 hover:shadow-emerald-300"
-              : "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-indigo-200 hover:shadow-xl"
+              : "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-indigo-200 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
           }`}
         >
-          <span className="relative z-10 flex items-center justify-center gap-2">
-            {completed ? (
-              <>
-                🏆 Completed Today
-              </>
-            ) : (
-              <>
-                <Plus size={20} />
-                Mark as Complete
-              </>
-            )}
-          </span>
+        <span className="relative z-10 flex items-center justify-center gap-2">
+          {!scheduledToday && !skippedToday ? (
+            <>📅 Next: {getNextScheduledDate(habit)}</>
+          ) : completed ? (
+            "🏆 Completed Today"
+          ) : (
+            <><Plus size={20} />Mark as Complete</>
+          )}
+        </span>
         </button>
+
+
+      {scheduledToday && !completed && !skippedToday && habit.allowSkip && (
+        <button
+          onClick={() => onSkip(habit)}
+          className="w-full mt-2 py-3 rounded-2xl font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 transition-all"
+        >
+          ⏭️ Skip Today
+        </button>
+
+        )}
       </div>
     </div>
   );

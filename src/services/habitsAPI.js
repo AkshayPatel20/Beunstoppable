@@ -8,11 +8,6 @@ import { subDays } from 'date-fns'
 
 const habitsCol = collection(firestore, 'habit_tracker_habits')
 
-export async function createHabit(habit){
-  const ref = await addDoc(habitsCol, { ...habit, streakCount: 0, lastCompletedDate: null, createdAt: new Date().toISOString() })
-  return { id: ref.id, ...habit }
-}
-
 export async function updateHabit(habitId, patch){
   const d = doc(firestore, 'habit_tracker_habits', habitId)
   await updateDoc(d, patch)
@@ -46,4 +41,29 @@ export async function toggleTodayCompletion(habit){
   }
   await updateDoc(docRef, { lastCompletedDate: new Date().toISOString(), streakCount: newStreak })
   return { ...habit, lastCompletedDate: new Date().toISOString(), streakCount: newStreak }
+}
+
+export async function createHabit(habit) {
+  const ref = await addDoc(habitsCol, {
+    ...habit,
+    streakCount: 0,
+    lastCompletedDate: null,
+    createdAt: new Date().toISOString(),
+    // NEW: Scheduling fields
+    frequency: habit.frequency || 'daily', // 'daily', 'weekly', 'custom'
+    scheduledDays: habit.scheduledDays || [0, 1, 2, 3, 4, 5, 6], // All days by default
+    customDates: habit.customDates || [], // For custom scheduling
+    allowSkip: habit.allowSkip || false, // Allow skipping without breaking streak
+    skippedDates: [] // Track skipped dates
+  });
+  return { id: ref.id, ...habit };
+}
+
+export async function skipHabitToday(habitId, habit) {
+  const docRef = doc(firestore, 'habit_tracker_habits', habitId);
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const skippedDates = [...(habit.skippedDates || []), todayStr];
+  
+  await updateDoc(docRef, { skippedDates });
+  return { ...habit, skippedDates };
 }
