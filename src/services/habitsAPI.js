@@ -3,8 +3,9 @@
   All functions use async/await and return plain objects or throw errors.
 */
 import { firestore } from './firebase'
-import { collection, addDoc, doc, getDocs, updateDoc, deleteDoc, query, where } from 'firebase/firestore'
+import { collection, addDoc, doc, getDocs, updateDoc, deleteDoc, query, where,setDoc, getDoc } from 'firebase/firestore'
 import { subDays } from 'date-fns'
+
 
 const habitsCol = collection(firestore, 'habit_tracker_habits')
 
@@ -62,8 +63,87 @@ export async function createHabit(habit) {
 export async function skipHabitToday(habitId, habit) {
   const docRef = doc(firestore, 'habit_tracker_habits', habitId);
   const todayStr = new Date().toISOString().slice(0, 10);
+  
+  // Add today to skipped dates array
   const skippedDates = [...(habit.skippedDates || []), todayStr];
   
   await updateDoc(docRef, { skippedDates });
+  
   return { ...habit, skippedDates };
+}
+
+export async function unskipHabitToday(habitId, habit) {
+  const docRef = doc(firestore, 'habit_tracker_habits', habitId);
+  const todayStr = new Date().toISOString().slice(0, 10);
+  
+  // Remove today from skipped dates
+  const skippedDates = (habit.skippedDates || []).filter(date => date !== todayStr);
+  
+  await updateDoc(docRef, { skippedDates });
+  
+  return { ...habit, skippedDates };
+}
+
+export async function saveNotificationSettings(userId, settings) {
+  const docRef = doc(firestore, 'user_notification_settings', userId);
+  
+  const dataToSave = {
+    userId: userId,
+    enabled: settings.enabled || false,
+    dailyReminder: settings.dailyReminder || false,
+    reminderTime: settings.reminderTime || '09:00',
+    beforeBedReminder: settings.beforeBedReminder || false,
+    beforeBedTime: settings.beforeBedTime || '21:00',
+    motivationalMessages: settings.motivationalMessages || false,
+    streakAlerts: settings.streakAlerts || false,
+    habitSpecificReminders: settings.habitSpecificReminders || {},
+    updatedAt: new Date().toISOString(),
+    createdAt: settings.createdAt || new Date().toISOString()
+  };
+  
+  console.log('💾 Saving to Firestore:', dataToSave);
+  
+  await setDoc(docRef, dataToSave);
+  
+  return dataToSave;
+}
+
+export async function getNotificationSettings(userId) {
+  const docRef = doc(firestore, 'user_notification_settings', userId);
+  const docSnap = await getDoc(docRef);
+  
+  console.log('📥 Fetching from Firestore for userId:', userId);
+  console.log('Document exists:', docSnap.exists());
+  
+  if (docSnap.exists()) {
+    const data = docSnap.data();
+    console.log('📄 Document data:', data);
+    
+    // Verify userId matches
+    if (data.userId !== userId) {
+      console.error('⚠️ UserId mismatch!');
+      return getDefaultSettings(userId);
+    }
+    
+    return data;
+  }
+  
+  console.log('📄 No document found, returning defaults');
+  return getDefaultSettings(userId);
+}
+
+function getDefaultSettings(userId) {
+  return {
+    userId: userId,
+    enabled: false,
+    dailyReminder: true,
+    reminderTime: '09:00',
+    beforeBedReminder: true,
+    beforeBedTime: '21:00',
+    motivationalMessages: true,
+    streakAlerts: true,
+    habitSpecificReminders: {},
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
 }

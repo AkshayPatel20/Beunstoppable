@@ -9,7 +9,7 @@ import {
 
 import { formatDate, isCompletedToday } from "../utils/dateHelpers";
 
-import { Plus } from "lucide-react";
+import { Plus  } from "lucide-react";
 
 import Navbar from '../components/Navbar';
 import StatsCard from '../components/StatsCard';
@@ -20,7 +20,7 @@ import AchievementsPage from '../components/AchievementsPage';
 import InsightsPage from '../components/InsightsPage';
 import ScheduleSelector from '../components/ScheduleSelector';
 
-import { skipHabitToday } from "../services/habitsAPI";
+import { skipHabitToday,unskipHabitToday } from "../services/habitsAPI";
 
 
 
@@ -33,6 +33,7 @@ export default function Dashboard() {
   const [showModal, setShowModal] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
 
+
   const [form, setForm] = useState({
     name: "",
     description: "",
@@ -43,7 +44,6 @@ export default function Dashboard() {
     scheduledDays: [0, 1, 2, 3, 4, 5, 6],
     allowSkip: false
   });
-
 
   
   useEffect(() => {
@@ -83,8 +83,21 @@ export default function Dashboard() {
   };
 
   const handleSkip = async (habit) => {
-    const updated = await skipHabitToday(habit.id, habit);
-    setHabits((prev) => prev.map((h) => (h.id === updated.id ? updated : h)));
+    try {
+      const updated = await skipHabitToday(habit.id, habit);
+      setHabits((prev) => prev.map((h) => (h.id === updated.id ? updated : h)));
+    } catch (error) {
+      console.error('Error skipping habit:', error);
+    }
+  };
+
+  const handleUnskip = async (habit) => {
+    try {
+      const updated = await unskipHabitToday(habit.id, habit);
+      setHabits((prev) => prev.map((h) => (h.id === updated.id ? updated : h)));
+    } catch (error) {
+      console.error('Error unskipping habit:', error);
+    }
   };
 
   const stats = {
@@ -95,7 +108,13 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-pink-50">
-      <Navbar user={user} activeTab={activeTab} setActiveTab={setActiveTab} />
+      
+      <Navbar 
+        user={user} 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab}
+        habits={habits} 
+      />
 
       <div className="container mx-auto py-12 px-6 max-w-7xl">
         {loading ? (
@@ -166,7 +185,8 @@ export default function Dashboard() {
                         habit={habit}
                         onToggle={handleToggle}
                         onDelete={handleDelete}
-                        onSkip={handleSkip} 
+                        onSkip={handleSkip}        
+                        onUnskip={handleUnskip}    
                       />
 
                     ))}
@@ -185,151 +205,151 @@ export default function Dashboard() {
       </div>
 
       {/* Add Habit Modal */}
- {showModal && (
-  <div
-    className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn"
-    style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(8px)' }}
-  >
-    {/* Overlay - Click to close */}
-    <div 
-      className="absolute inset-0" 
-      onClick={() => setShowModal(false)}
-    />
-    
-    {/* Modal Container */}
-    <div
-      onClick={(e) => e.stopPropagation()}
-      className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-slate-200 animate-scaleIn"
-    >
-      {/* Fixed Header */}
-      <div className="flex-shrink-0 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-t-3xl px-8 py-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-3xl font-black text-white">Create New Habit</h3>
-            <p className="text-white/80 text-sm mt-1">Build a new healthy routine</p>
-          </div>
-          <button
+      {showModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(8px)' }}
+        >
+          {/* Overlay - Click to close */}
+          <div 
+            className="absolute inset-0" 
             onClick={() => setShowModal(false)}
-            className="p-2 hover:bg-white/20 rounded-2xl transition-all hover:scale-110 hover:rotate-90"
+          />
+          
+          {/* Modal Container */}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-slate-200 animate-scaleIn"
           >
-            <span className="text-3xl text-white leading-none">×</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Scrollable Content Area */}
-      <div className="flex-1 overflow-y-auto px-8 py-6">
-        <div className="space-y-6">
-          {/* Section 1: Basic Info */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-slate-700 font-bold mb-3">
-              <span className="text-xl">📝</span>
-              <h4 className="text-lg">Basic Information</h4>
-            </div>
-
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">
-                Habit Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                placeholder="e.g., Morning Meditation, Daily Exercise"
-                className="w-full px-5 py-4 rounded-2xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition-all bg-white"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">
-                Description <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                placeholder="What does this habit mean to you? Why is it important?"
-                className="w-full px-5 py-4 rounded-2xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition-all bg-white h-24 resize-none"
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">
-                  Category
-                </label>
-                <select
-                  className="w-full px-5 py-4 rounded-2xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition-all bg-white"
-                  value={form.category}
-                  onChange={(e) => setForm({ ...form, category: e.target.value })}
+            {/* Fixed Header */}
+            <div className="flex-shrink-0 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-t-3xl px-8 py-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-3xl font-black text-white">Create New Habit</h3>
+                  <p className="text-white/80 text-sm mt-1">Build a new healthy routine</p>
+                </div>
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="p-2 hover:bg-white/20 rounded-2xl transition-all hover:scale-110 hover:rotate-90"
                 >
-                  <option>General</option>
-                  <option>Health</option>
-                  <option>Learning</option>
-                  <option>Work</option>
-                </select>
+                  <span className="text-3xl text-white leading-none">×</span>
+                </button>
               </div>
+            </div>
 
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">
-                  Start Date
-                </label>
-                <input
-                  type="date"
-                  className="w-full px-5 py-4 rounded-2xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition-all bg-white"
-                  value={form.startDate}
-                  onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-                />
+            {/* Scrollable Content Area */}
+            <div className="flex-1 overflow-y-auto px-8 py-6">
+              <div className="space-y-6">
+                {/* Section 1: Basic Info */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-slate-700 font-bold mb-3">
+                    <span className="text-xl">📝</span>
+                    <h4 className="text-lg">Basic Information</h4>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">
+                      Habit Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      placeholder="e.g., Morning Meditation, Daily Exercise"
+                      className="w-full px-5 py-4 rounded-2xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition-all bg-white"
+                      value={form.name}
+                      onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">
+                      Description <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      placeholder="What does this habit mean to you? Why is it important?"
+                      className="w-full px-5 py-4 rounded-2xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition-all bg-white h-24 resize-none"
+                      value={form.description}
+                      onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-2">
+                        Category
+                      </label>
+                      <select
+                        className="w-full px-5 py-4 rounded-2xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition-all bg-white"
+                        value={form.category}
+                        onChange={(e) => setForm({ ...form, category: e.target.value })}
+                      >
+                        <option>General</option>
+                        <option>Health</option>
+                        <option>Learning</option>
+                        <option>Work</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-2">
+                        Start Date
+                      </label>
+                      <input
+                        type="date"
+                        className="w-full px-5 py-4 rounded-2xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition-all bg-white"
+                        value={form.startDate}
+                        onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-slate-200"></div>
+
+                {/* Section 2: Schedule */}
+                <div>
+                  <div className="flex items-center gap-2 text-slate-700 font-bold mb-4">
+                    <span className="text-xl">📅</span>
+                    <h4 className="text-lg">Schedule & Frequency</h4>
+                  </div>
+                  
+                  <ScheduleSelector
+                    value={{
+                      frequency: form.frequency,
+                      scheduledDays: form.scheduledDays,
+                      allowSkip: form.allowSkip
+                    }}
+                    onChange={(schedule) => setForm({ ...form, ...schedule })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Fixed Footer */}
+            <div className="flex-shrink-0 bg-white rounded-b-3xl px-8 py-6 border-t border-slate-200">
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="bg-slate-200 hover:bg-slate-300 px-8 py-4 rounded-2xl font-bold transition-all hover:scale-105 active:scale-95 text-slate-700"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={handleCreate}
+                  disabled={!form.name || !form.description}
+                  className={`px-8 py-4 rounded-2xl shadow-lg font-bold transition-all ${
+                    !form.name || !form.description
+                      ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white hover:scale-105 active:scale-95'
+                  }`}
+                >
+                  {!form.name || !form.description ? 'Fill Required Fields' : '✨ Create Habit'}
+                </button>
               </div>
             </div>
           </div>
-
-          {/* Divider */}
-          <div className="border-t border-slate-200"></div>
-
-          {/* Section 2: Schedule */}
-          <div>
-            <div className="flex items-center gap-2 text-slate-700 font-bold mb-4">
-              <span className="text-xl">📅</span>
-              <h4 className="text-lg">Schedule & Frequency</h4>
-            </div>
-            
-            <ScheduleSelector
-              value={{
-                frequency: form.frequency,
-                scheduledDays: form.scheduledDays,
-                allowSkip: form.allowSkip
-              }}
-              onChange={(schedule) => setForm({ ...form, ...schedule })}
-            />
-          </div>
         </div>
-      </div>
-
-      {/* Fixed Footer */}
-      <div className="flex-shrink-0 bg-white rounded-b-3xl px-8 py-6 border-t border-slate-200">
-        <div className="flex justify-end gap-3">
-          <button
-            onClick={() => setShowModal(false)}
-            className="bg-slate-200 hover:bg-slate-300 px-8 py-4 rounded-2xl font-bold transition-all hover:scale-105 active:scale-95 text-slate-700"
-          >
-            Cancel
-          </button>
-
-          <button
-            onClick={handleCreate}
-            disabled={!form.name || !form.description}
-            className={`px-8 py-4 rounded-2xl shadow-lg font-bold transition-all ${
-              !form.name || !form.description
-                ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
-                : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white hover:scale-105 active:scale-95'
-            }`}
-          >
-            {!form.name || !form.description ? 'Fill Required Fields' : '✨ Create Habit'}
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+      )}
       
       {/* Add Custom CSS Animations */}
       <style>{`
